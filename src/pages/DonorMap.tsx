@@ -6,30 +6,41 @@ import { mockUsers } from '../data/mockData';
 import { getCurrentLocation, calculateDistance, formatDistance } from '../utils/location';
 import Button from '../components/UI/Button';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix for default marker icon issue with webpack
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+});
+
 
 const DonorMap: React.FC = () => {
   const { user } = useAuth();
   const [donors, setDonors] = useState(mockUsers.filter(u => u.isDonor && u.isAvailable));
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<L.LatLngExpression | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedBloodType, setSelectedBloodType] = useState<string>('all');
+  const [mapCenter, setMapCenter] = useState<L.LatLngExpression>([40.7128, -74.0060]); // Default to New York
 
   useEffect(() => {
     const loadLocation = async () => {
       try {
         const position = await getCurrentLocation();
-        setUserLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
+        const currentLocation: L.LatLngExpression = [position.coords.latitude, position.coords.longitude];
+        setUserLocation(currentLocation);
+        setMapCenter(currentLocation);
       } catch (error) {
         console.error('Error getting location:', error);
-        // Use user's stored location as fallback
         if (user?.location) {
-          setUserLocation({
-            lat: user.location.lat,
-            lng: user.location.lng,
-          });
+          const userStoredLocation: L.LatLngExpression = [user.location.lat, user.location.lng];
+          setUserLocation(userStoredLocation);
+          setMapCenter(userStoredLocation);
         }
       } finally {
         setLoading(false);
@@ -38,21 +49,22 @@ const DonorMap: React.FC = () => {
 
     loadLocation();
   }, [user]);
+// load locaion
 
-  const filteredDonors = donors.filter(donor => 
+  const filteredDonors = donors.filter(donor =>
     selectedBloodType === 'all' || donor.bloodType === selectedBloodType
   );
 
-  const donorsWithDistance = userLocation
+  const donorsWithDistance = user && user.location
     ? filteredDonors.map(donor => ({
-        ...donor,
-        distance: calculateDistance(
-          userLocation.lat,
-          userLocation.lng,
-          donor.location.lat,
-          donor.location.lng
-        ),
-      })).sort((a, b) => a.distance - b.distance)
+      ...donor,
+      distance: calculateDistance(
+        user.location.lat,
+        user.location.lng,
+        donor.location.lat,
+        donor.location.lng
+      ),
+    })).sort((a, b) => a.distance - b.distance)
     : filteredDonors;
 
   if (loading) {
@@ -66,7 +78,7 @@ const DonorMap: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
+        {/* Header remains the same */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -101,7 +113,7 @@ const DonorMap: React.FC = () => {
                 </Button>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <div className="flex items-center">
@@ -110,17 +122,17 @@ const DonorMap: React.FC = () => {
                 </div>
                 <p className="text-2xl font-bold text-blue-900 mt-1">{filteredDonors.length}</p>
               </div>
-              
+
               <div className="bg-green-50 p-4 rounded-lg">
                 <div className="flex items-center">
                   <Navigation className="h-5 w-5 text-green-600 mr-2" />
                   <span className="text-sm font-medium text-green-800">Within 5km</span>
                 </div>
                 <p className="text-2xl font-bold text-green-900 mt-1">
-                  {userLocation ? donorsWithDistance.filter(d => d.distance <= 5).length : '-'}
+                  {userLocation ? donorsWithDistance.filter(d => (d as any).distance <= 5).length : '-'}
                 </p>
               </div>
-              
+
               <div className="bg-red-50 p-4 rounded-lg">
                 <div className="flex items-center">
                   <Heart className="h-5 w-5 text-red-600 mr-2" />
@@ -133,8 +145,7 @@ const DonorMap: React.FC = () => {
             </div>
           </div>
         </motion.div>
-
-        {/* Map Placeholder */}
+        {/* Map */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -144,44 +155,30 @@ const DonorMap: React.FC = () => {
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Interactive Map</h2>
           </div>
-          <div className="h-96 bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden rounded-b-xl">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <MapPin className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">Interactive Map</h3>
-                <p className="text-gray-500">
-                  In production, this would show a real map with donor locations
-                </p>
-              </div>
-            </div>
-            
-            {/* Animated pins */}
-            {[...Array(5)].map((_, i) => (
-              <motion.div
-                key={i}
-                className="absolute"
-                style={{
-                  left: `${20 + i * 15}%`,
-                  top: `${30 + i * 10}%`,
-                }}
-                animate={{
-                  y: [0, -10, 0],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  delay: i * 0.2,
-                }}
-              >
-                <div className="bg-red-600 text-white p-2 rounded-full shadow-lg">
-                  <MapPin className="h-4 w-4" />
-                </div>
-              </motion.div>
-            ))}
+          <div className="h-96 bg-gray-200 rounded-b-xl">
+            <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              />
+              {donorsWithDistance.map(donor => (
+                <Marker key={(donor as any).id} position={[(donor as any).location.lat, (donor as any).location.lng]}>
+                  <Popup>
+                    <b>{(donor as any).name}</b><br />
+                    Blood Type: {(donor as any).bloodType}
+                  </Popup>
+                </Marker>
+              ))}
+              {userLocation && (
+                <Marker position={userLocation}>
+                  <Popup>You are here</Popup>
+                </Marker>
+              )}
+            </MapContainer>
           </div>
         </motion.div>
 
-        {/* Donor List */}
+        {/* Donor List remains the same */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -191,16 +188,16 @@ const DonorMap: React.FC = () => {
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Donor Directory</h2>
           </div>
-          
+
           <div className="p-6">
-            {donorsWithDistance.length === 0 ? (
+            {(donorsWithDistance as any).length === 0 ? (
               <div className="text-center py-8">
                 <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600">No donors found matching your criteria</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {donorsWithDistance.map((donor, index) => (
+                {(donorsWithDistance as any).map((donor: any, index: any) => (
                   <motion.div
                     key={donor.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -222,7 +219,7 @@ const DonorMap: React.FC = () => {
                         {donor.bloodType}
                       </span>
                     </div>
-                    
+
                     <div className="space-y-2 text-sm text-gray-600">
                       <div className="flex items-center">
                         <MapPin className="h-4 w-4 mr-2 text-gray-400" />
@@ -239,7 +236,7 @@ const DonorMap: React.FC = () => {
                         <span className="text-green-600 font-medium">Available now</span>
                       </div>
                     </div>
-                    
+
                     <div className="mt-4 flex space-x-2">
                       <Button size="sm" className="flex-1">
                         Contact

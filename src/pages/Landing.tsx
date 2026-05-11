@@ -68,7 +68,7 @@ const Landing: React.FC = () => {
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link to="/register">
-                  <Button size="lg" className="w-full sm:w-auto bg-white text-red-600 hover:bg-gray-100">
+                  <Button size="lg" className="w-full sm:w-auto bg-transparent border-2 border-white text-white hover:bg-white hover:text-red-600">
                     Get Started
                   </Button>
                 </Link>
@@ -245,9 +245,9 @@ const Landing: React.FC = () => {
               <Link to="/register">
                 <Button 
                   size="lg" 
-                  className="w-full sm:w-auto bg-white text-red-600 hover:bg-gray-100"
+                  className= "w-full sm:w-auto bg-transparent border-2 border-white text-white hover:bg-white hover:text-red-600"
                 >
-                  <Heart className="w-5 h-5" />
+  
                   Become a Donor
                 </Button>
               </Link>
