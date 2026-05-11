@@ -19,20 +19,27 @@ router.post('/register', async (req, res) => {
     }
 
     // Create user object
-    user = new User({
+    const newUser = new User({
       email,
-      password,
+      googleId,
       name,
-      phone,
-      bloodType,
-      userType,
+      bloodType: 'O+', 
+      phone: '', 
+      userType: userType || 'donor',
       location: {
         type: 'Point',
-        coordinates: [location.lng, location.lat], // Note: GeoJSON uses [longitude, latitude]
-        address: location.address
-      }
+        coordinates: [0, 0],
+        address: '',
+      },
+      privacy: {           // Add this block
+        shareLocation: false,
+        shareContact: true,
+        receiveAlerts: true
+      },
+      badges: [],
+      donationCount: 0,
+      points: 0
     });
-
     // Hash password
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(password, salt);

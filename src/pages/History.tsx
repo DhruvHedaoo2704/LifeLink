@@ -241,7 +241,7 @@ const History: React.FC = () => {
             >
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Achievements</h3>
               
-              {user.badges.length === 0 ? (
+              {(user.badges?.length || 0) === 0 ? (
                 <div className="text-center py-4">
                   <Award className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                   <p className="text-gray-600 text-sm">No badges earned yet</p>

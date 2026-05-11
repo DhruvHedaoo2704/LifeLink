@@ -74,7 +74,7 @@ const Dashboard: React.FC = () => {
                   <p className="text-red-100">Points</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-3xl font-bold">{user.badges.length}</p>
+                  <p className="text-3xl font-bold">{user.badges?.length || 0}</p>
                   <p className="text-red-100">Badges</p>
                 </div>
                 <div className="text-center">

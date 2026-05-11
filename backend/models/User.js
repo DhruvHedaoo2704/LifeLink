@@ -7,6 +7,34 @@ const UserSchema = new mongoose.Schema({
     unique: true,
     lowercase: true,
   },
+  settings: {
+    shareLocation: {
+      type: Boolean,
+      default: true,
+    },
+    emailNotifications: {
+      type: Boolean,
+      default: true,
+    }
+  },
+  privacy: {
+    shareLocation: {
+      type: Boolean,
+      default: false,
+    },
+    showPhone: {
+      type: Boolean,
+      default: true,
+    },
+    shareContact: {
+      type: Boolean,
+      default: true,
+    },
+    receiveAlerts: {
+      type: Boolean,
+      default: true,
+    }
+  },
   password: {
     type: String,
     required: false, // Optional for OAuth users
@@ -61,6 +89,10 @@ const UserSchema = new mongoose.Schema({
   points: {
     type: Number,
     default: 0,
+  },
+  badges: {         
+    type: [String],
+    default: [],
   },
   joinDate: {
     type: Date,

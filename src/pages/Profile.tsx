@@ -30,9 +30,9 @@ const Profile: React.FC = () => {
     address: user?.location.address || '',
     isAvailable: user?.isAvailable || false,
     privacy: {
-      shareLocation: user?.privacy.shareLocation || false,
-      shareContact: user?.privacy.shareContact || false,
-      receiveAlerts: user?.privacy.receiveAlerts || false,
+      shareLocation: user?.privacy?.shareLocation || false,
+      shareContact: user?.privacy?.shareContact || false,  
+      receiveAlerts: user?.privacy?.receiveAlerts || false,
     },
   });
 
@@ -116,15 +116,15 @@ const Profile: React.FC = () => {
             {user.isDonor && (
               <div className="mt-6 grid grid-cols-3 gap-4">
                 <div className="text-center">
-                  <p className="text-3xl font-bold">{user.donationCount}</p>
+                  <p className="text-3xl font-bold">{(user.donationCount || 0)}</p>
                   <p className="text-red-100 text-sm">Donations</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-3xl font-bold">{user.points}</p>
+                  <p className="text-3xl font-bold">{user.points || 0}</p>
                   <p className="text-red-100 text-sm">Points</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-3xl font-bold">{user.badges.length}</p>
+                  <p className="text-3xl font-bold">{user.badges?.length || 0}</p>
                   <p className="text-red-100 text-sm">Badges</p>
                 </div>
               </div>
@@ -302,7 +302,8 @@ const Profile: React.FC = () => {
                       <input
                         type="checkbox"
                         name="privacy.shareLocation"
-                        checked={editing ? formData.privacy.shareLocation : user.privacy.shareLocation}
+                        // Add ?. before privacy and before shareLocation
+                        checked={editing ? formData.privacy?.shareLocation : user.privacy?.shareLocation || false}
                         onChange={handleInputChange}
                         disabled={!editing}
                         className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
@@ -314,7 +315,7 @@ const Profile: React.FC = () => {
                       <input
                         type="checkbox"
                         name="privacy.shareContact"
-                        checked={editing ? formData.privacy.shareContact : user.privacy.shareContact}
+                        checked={editing ? formData.privacy?.shareContact : user.privacy?.shareContact || false}
                         onChange={handleInputChange}
                         disabled={!editing}
                         className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
@@ -326,7 +327,7 @@ const Profile: React.FC = () => {
                       <input
                         type="checkbox"
                         name="privacy.receiveAlerts"
-                        checked={editing ? formData.privacy.receiveAlerts : user.privacy.receiveAlerts}
+                        checked={editing ? formData.privacy?.receiveAlerts : user.privacy?.receiveAlerts || false}
                         onChange={handleInputChange}
                         disabled={!editing}
                         className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
@@ -353,12 +354,12 @@ const Profile: React.FC = () => {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Total Donations</span>
-                    <span className="text-2xl font-bold text-red-600">{user.donationCount}</span>
+                    <span className="text-2xl font-bold text-red-600">{user.donationCount || 0}</span>
                   </div>
                   
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Points Earned</span>
-                    <span className="text-2xl font-bold text-green-600">{user.points}</span>
+                    <span className="text-2xl font-bold text-green-600">{user.points || 0}</span>
                   </div>
                   
                   <div className="flex justify-between items-center">
@@ -393,7 +394,7 @@ const Profile: React.FC = () => {
             >
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Achievements</h3>
               
-              {user.badges.length === 0 ? (
+             {(user.badges?.length || 0) === 0 ? (
                 <div className="text-center py-4">
                   <Heart className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                   <p className="text-gray-600 text-sm">No badges earned yet</p>
