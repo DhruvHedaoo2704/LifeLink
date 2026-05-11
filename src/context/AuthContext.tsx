@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, AuthContextType, RegisterData } from '../types';
-import { mockUsers } from '../data/mockData';
+import api from '../utils/api';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -23,62 +23,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string, userType: 'donor' | 'recipient') => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const foundUser = mockUsers.find(u => u.email === email);
-    if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('lifelink_user', JSON.stringify(foundUser));
-    } else {
-      throw new Error('Invalid credentials');
+    try {
+      const res = await api.post('/auth/login', { email, password });
+      const loggedInUser = {
+        ...res.data.user,
+        isDonor: res.data.user.userType === 'donor',
+        isRecipient: res.data.user.userType === 'recipient',
+      };
+      setUser(loggedInUser);
+      localStorage.setItem('lifelink_token', res.data.token);
+      localStorage.setItem('lifelink_user', JSON.stringify(loggedInUser));
+    } catch (err: any) {
+      throw new Error(err.response?.data?.message || 'Invalid credentials');
+    }
+  };
+
+  const googleLogin = async (googleToken: string, userType: 'donor' | 'recipient' = 'donor') => {
+    try {
+      const res = await api.post('/auth/google-login', { googleToken, userType });
+      const loggedInUser = {
+        ...res.data.user,
+        isDonor: res.data.user.userType === 'donor',
+        isRecipient: res.data.user.userType === 'recipient',
+      };
+      setUser(loggedInUser);
+      localStorage.setItem('lifelink_token', res.data.token);
+      localStorage.setItem('lifelink_user', JSON.stringify(loggedInUser));
+    } catch (err: any) {
+      throw new Error(err.response?.data?.message || 'Google login failed');
     }
   };
 
   const register = async (userData: RegisterData) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const newUser: User = {
-      id: Date.now().toString(),
-      email: userData.email,
-      name: userData.name,
-      bloodType: userData.bloodType,
-      phone: userData.phone,
-      location: userData.location,
-      isAvailable: true,
-      isDonor: userData.userType === 'donor',
-      isRecipient: userData.userType === 'recipient',
-      donationCount: 0,
-      points: 0,
-      badges: [],
-      joinDate: new Date(),
-      privacy: {
-        shareLocation: true,
-        shareContact: true,
-        receiveAlerts: true,
-      },
-    };
-
-    setUser(newUser);
-    localStorage.setItem('lifelink_user', JSON.stringify(newUser));
+    try {
+      const res = await api.post('/auth/register', userData);
+      const registeredUser = {
+        ...res.data.user,
+        isDonor: res.data.user.userType === 'donor',
+        isRecipient: res.data.user.userType === 'recipient',
+      };
+      setUser(registeredUser);
+      localStorage.setItem('lifelink_token', res.data.token);
+      localStorage.setItem('lifelink_user', JSON.stringify(registeredUser));
+    } catch (err: any) {
+      throw new Error(err.response?.data?.message || 'Registration failed');
+    }
   };
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem('lifelink_token');
     localStorage.removeItem('lifelink_user');
   };
 
   const updateUser = (userData: Partial<User>) => {
     if (user) {
       const updatedUser = { ...user, ...userData };
-      setUser(updatedUser);
+      setUser(updatedUser as User);
       localStorage.setItem('lifelink_user', JSON.stringify(updatedUser));
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, login, googleLogin, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

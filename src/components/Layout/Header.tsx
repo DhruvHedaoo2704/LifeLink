@@ -74,7 +74,7 @@ const Header: React.FC = () => {
             >
               Dashboard
             </Link>
-            {user.isDonor && (
+            {(user.isDonor || user.userType === 'donor') && (
               <Link
                 to="/map"
                 className={`transition-colors ${
@@ -86,7 +86,7 @@ const Header: React.FC = () => {
                 Donor Map
               </Link>
             )}
-            {user.isRecipient && (
+            {(user.isRecipient || user.userType === 'recipient') && (
               <Link
                 to="/emergency"
                 className={`transition-colors ${

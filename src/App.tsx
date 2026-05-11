@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Header from './components/Layout/Header';
 import Footer from './components/Layout/Footer';
@@ -12,6 +13,10 @@ import DonorMap from './pages/DonorMap';
 import History from './pages/History';
 import Leaderboard from './pages/Leaderboard';
 import Profile from './pages/Profile';
+import About from './pages/About';
+import HowItWorks from './pages/HowItWorks';
+import SafetyGuidelines from './pages/SafetyGuidelines';
+import FAQ from './pages/FAQ';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -43,6 +48,12 @@ const AppContent: React.FC = () => {
               <Login />
             </PublicRoute>
           } />
+
+          {/* Informational Routes */}
+          <Route path="/about" element={<About />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/safety" element={<SafetyGuidelines />} />
+          <Route path="/faq" element={<FAQ />} />
 
           {/* Protected Routes */}
           <Route path="/dashboard" element={
@@ -86,12 +97,17 @@ const AppContent: React.FC = () => {
 };
 
 function App() {
+  // Replace with your actual Google OAuth Client ID from Google Cloud Console
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID';
+
   return (
-    <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
-    </AuthProvider>
+    <GoogleOAuthProvider clientId={googleClientId}>
+      <AuthProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </AuthProvider>
+    </GoogleOAuthProvider>
   );
 }
 

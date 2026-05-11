@@ -2,14 +2,16 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { Droplet, Mail, Lock } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/UI/Button';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -34,6 +36,25 @@ const Login: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setGoogleLoading(true);
+    try {
+      const token = credentialResponse.credential;
+      await googleLogin(token, formData.userType);
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Google login failed:', error);
+      alert('Google login failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    console.error('Google login failed');
+    alert('Google login failed. Please try again.');
   };
 
   return (
@@ -153,6 +174,28 @@ const Login: React.FC = () => {
             {loading ? <LoadingSpinner size="sm" /> : 'Sign In'}
           </Button>
         </form>
+
+        {/* Divider */}
+        <div className="mt-6 flex items-center">
+          <div className="flex-1 border-t border-gray-300"></div>
+          <span className="px-3 text-gray-500 text-sm">OR</span>
+          <div className="flex-1 border-t border-gray-300"></div>
+        </div>
+
+        {/* Google Login */}
+        <div className="mt-6">
+          {googleLoading ? (
+            <div className="flex justify-center">
+              <LoadingSpinner size="sm" />
+            </div>
+          ) : (
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              text="signin_with"
+            />
+          )}
+        </div>
 
         <div className="mt-6">
           <div className="text-center">

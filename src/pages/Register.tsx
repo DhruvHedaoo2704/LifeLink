@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { Droplet, Heart, User, Mail, Phone, MapPin } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
-import { BloodType, RegisterData } from '../types';
+import { RegisterData } from '../types';
 import { bloodTypes } from '../data/mockData';
 import { getCurrentLocation } from '../utils/location';
 import Button from '../components/UI/Button';
@@ -11,8 +12,9 @@ import LoadingSpinner from '../components/UI/LoadingSpinner';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register, googleLogin } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [formData, setFormData] = useState<RegisterData>({
     email: '',
@@ -71,6 +73,25 @@ const Register: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setGoogleLoading(true);
+    try {
+      const token = credentialResponse.credential;
+      await googleLogin(token, formData.userType);
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Google signup failed:', error);
+      alert('Google signup failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    console.error('Google signup failed');
+    alert('Google signup failed. Please try again.');
   };
 
   return (
@@ -268,6 +289,28 @@ const Register: React.FC = () => {
             {loading ? <LoadingSpinner size="sm" /> : 'Create Account'}
           </Button>
         </form>
+
+        {/* Divider */}
+        <div className="mt-6 flex items-center">
+          <div className="flex-1 border-t border-gray-300"></div>
+          <span className="px-3 text-gray-500 text-sm">OR</span>
+          <div className="flex-1 border-t border-gray-300"></div>
+        </div>
+
+        {/* Google Signup */}
+        <div className="mt-6">
+          {googleLoading ? (
+            <div className="flex justify-center">
+              <LoadingSpinner size="sm" />
+            </div>
+          ) : (
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              text="signup_with"
+            />
+          )}
+        </div>
 
         <div className="mt-6 text-center">
           <p className="text-gray-600">

@@ -82,6 +82,7 @@ export type BloodType = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
 export interface AuthContextType {
   user: User | null;
   login: (email: string, password: string, userType: 'donor' | 'recipient') => Promise<void>;
+  googleLogin: (googleToken: string, userType: 'donor' | 'recipient') => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;

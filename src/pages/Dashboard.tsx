@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { 
-  Heart, 
-  MapPin, 
-  Clock, 
-  AlertTriangle, 
-  Users, 
+import {
+  Heart,
+  MapPin,
+  Clock,
+  AlertTriangle,
+  Users,
   Award,
   TrendingUp,
   Activity
@@ -34,7 +34,7 @@ const Dashboard: React.FC = () => {
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const minutes = Math.floor(diff / 60000);
-    
+
     if (minutes < 60) return `${minutes}m ago`;
     if (minutes < 1440) return `${Math.floor(minutes / 60)}h ago`;
     return `${Math.floor(minutes / 1440)}d ago`;
@@ -62,7 +62,7 @@ const Dashboard: React.FC = () => {
               </div>
               <BloodDropAnimation size="lg" className="text-white" />
             </div>
-            
+
             {user.isDonor && (
               <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
@@ -113,7 +113,7 @@ const Dashboard: React.FC = () => {
                   )}
                 </div>
               </div>
-              
+
               <div className="p-6">
                 {activeRequests.length === 0 ? (
                   <div className="text-center py-8">
@@ -186,7 +186,7 @@ const Dashboard: React.FC = () => {
                   Recent Activity
                 </h2>
               </div>
-              
+
               <div className="p-6">
                 {recentDonations.length === 0 ? (
                   <div className="text-center py-8">
@@ -285,16 +285,15 @@ const Dashboard: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Availability</h3>
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-gray-700">Status</span>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    user.isAvailable 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-gray-100 text-gray-800'
-                  }`}>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${user.isAvailable
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-gray-100 text-gray-800'
+                    }`}>
                     {user.isAvailable ? 'Available' : 'Unavailable'}
                   </span>
                 </div>
-                <Button 
-                  className="w-full" 
+                <Button
+                  className="w-full"
                   variant={user.isAvailable ? 'secondary' : 'primary'}
                 >
                   {user.isAvailable ? 'Set Unavailable' : 'Set Available'}
