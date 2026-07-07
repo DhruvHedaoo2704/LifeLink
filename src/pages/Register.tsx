@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
-import { Droplet, Heart, User, Mail, Phone, MapPin } from 'lucide-react';
+import { Droplet, MapPin } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { BloodType, RegisterData } from '../types';
+import { RegisterData } from '../types';
 import { bloodTypes } from '../data/mockData';
 import { getCurrentLocation } from '../utils/location';
 import Button from '../components/UI/Button';
@@ -40,7 +40,7 @@ const Register: React.FC = () => {
       const { latitude, longitude } = position.coords;
       
       // Simulate reverse geocoding
-      const address = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+      const address = `Hyderabad, TS (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
       
       setFormData(prev => ({
         ...prev,
@@ -65,176 +65,171 @@ const Register: React.FC = () => {
     try {
       await register(formData);
       navigate('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration failed:', error);
-      alert('Registration failed. Please try again.');
+      alert(error.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="max-w-md w-full bg-white rounded-xl shadow-lg p-8"
-      >
-        <div className="text-center mb-8">
-          <Droplet className="h-12 w-12 text-red-600 mx-auto mb-4" />
-          <h2 className="text-3xl font-bold text-gray-900">Join Life Link</h2>
-          <p className="text-gray-600 mt-2">Create your account to start saving lives</p>
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-between font-sans">
+      {/* Top Header Row matching Mockup 2 */}
+      <header className="w-full bg-white border-b border-gray-100 py-4 px-8 flex justify-between items-center">
+        <Link to="/" className="flex items-center space-x-1">
+          <Droplet className="h-7 w-7 text-red-600 fill-red-600" />
+          <span className="text-xl font-extrabold text-gray-900 tracking-tight">LifeLink</span>
+        </Link>
+        <div className="text-xs font-bold text-red-600">
+          Emergency: <span className="hover:underline">9399239147</span>
         </div>
+      </header>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* User Type Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              I want to:
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <motion.label
-                whileHover={{ scale: 1.02 }}
-                className={`
-                  flex items-center justify-center p-3 border rounded-lg cursor-pointer transition-all
-                  ${formData.userType === 'donor' 
-                    ? 'border-red-600 bg-red-50 text-red-600' 
-                    : 'border-gray-300 hover:border-red-300'
-                  }
-                `}
-              >
-                <input
-                  type="radio"
-                  name="userType"
-                  value="donor"
-                  checked={formData.userType === 'donor'}
-                  onChange={handleInputChange}
-                  className="sr-only"
-                />
-                <Heart className="h-5 w-5 mr-2" />
-                Donate Blood
-              </motion.label>
-              
-              <motion.label
-                whileHover={{ scale: 1.02 }}
-                className={`
-                  flex items-center justify-center p-3 border rounded-lg cursor-pointer transition-all
-                  ${formData.userType === 'recipient' 
-                    ? 'border-red-600 bg-red-50 text-red-600' 
-                    : 'border-gray-300 hover:border-red-300'
-                  }
-                `}
-              >
-                <input
-                  type="radio"
-                  name="userType"
-                  value="recipient"
-                  checked={formData.userType === 'recipient'}
-                  onChange={handleInputChange}
-                  className="sr-only"
-                />
-                <User className="h-5 w-5 mr-2" />
-                Need Blood
-              </motion.label>
-            </div>
+      {/* Main Form Box */}
+      <div className="flex-1 flex items-center justify-center px-4 py-8">
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden my-4"
+        >
+          {/* Tabs header */}
+          <div className="flex border-b border-gray-100">
+            <Link to="/login" className="flex-1 py-4 text-center font-semibold text-sm text-gray-400 hover:text-gray-600 transition-colors">
+              Login
+            </Link>
+            <button className="flex-1 py-4 text-center font-bold text-sm border-b-2 border-red-600 text-red-600">
+              Sign Up
+            </button>
           </div>
 
-          {/* Basic Information */}
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Full Name
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+          <div className="p-8 space-y-5">
+            <div className="text-center space-y-1">
+              <h2 className="text-2xl font-bold text-gray-900">Create Account</h2>
+              <p className="text-sm text-gray-400">Join LifeLink to start saving lives.</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Account Type Option Buttons */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  Register As
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(p => ({ ...p, userType: 'donor' }))}
+                    className={`py-2 px-3 border rounded-xl text-xs font-bold transition-all ${
+                      formData.userType === 'donor'
+                        ? 'border-red-600 bg-red-50 text-red-600'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Donor
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(p => ({ ...p, userType: 'recipient' }))}
+                    className={`py-2 px-3 border rounded-xl text-xs font-bold transition-all ${
+                      formData.userType === 'recipient'
+                        ? 'border-red-600 bg-red-50 text-red-600'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Recipient / Patient
+                  </button>
+                </div>
+              </div>
+
+              {/* Full Name */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  Full Name
+                </label>
                 <input
                   type="text"
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
                   required
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  placeholder="Enter your full name"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all placeholder-gray-300"
+                  placeholder="Enter full name"
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+              {/* Email Address */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  Email Address
+                </label>
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
                   required
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  placeholder="Enter your email"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all placeholder-gray-300"
+                  placeholder="Enter email address"
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                placeholder="Create a password"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Phone Number
-              </label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+              {/* Phone Number */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  Phone Number
+                </label>
                 <input
                   type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleInputChange}
                   required
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  placeholder="Enter your phone number"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all placeholder-gray-300"
+                  placeholder="Enter mobile number"
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Blood Type
-              </label>
-              <select
-                name="bloodType"
-                value={formData.bloodType}
-                onChange={handleInputChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              >
-                {bloodTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
-            </div>
+              {/* Password */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all placeholder-gray-300"
+                  placeholder="Create password"
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Location
-              </label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+              {/* Blood Type */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  Blood Group
+                </label>
+                <select
+                  name="bloodType"
+                  value={formData.bloodType}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white transition-all text-gray-700"
+                >
+                  {bloodTypes.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Location Input with Action Button */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  Home Location / City
+                </label>
+                <div className="flex gap-2">
                   <input
                     type="text"
                     value={formData.location.address}
@@ -242,42 +237,47 @@ const Register: React.FC = () => {
                       ...prev,
                       location: { ...prev.location, address: e.target.value }
                     }))}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    placeholder="Enter your address"
+                    required
+                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all placeholder-gray-300"
+                    placeholder="Enter city or address"
                   />
+                  <Button
+                    type="button"
+                    onClick={getLocation}
+                    disabled={locationLoading}
+                    variant="secondary"
+                    className="px-3 hover:bg-gray-100 transition-all"
+                  >
+                    {locationLoading ? <LoadingSpinner size="sm" /> : <MapPin className="h-4 w-4 text-red-500" />}
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  onClick={getLocation}
-                  disabled={locationLoading}
-                  variant="secondary"
-                  className="px-3"
-                >
-                  {locationLoading ? <LoadingSpinner size="sm" /> : <MapPin className="h-4 w-4" />}
-                </Button>
               </div>
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-md shadow-red-200 transition-all"
+              >
+                {loading ? <LoadingSpinner size="sm" /> : 'Register'}
+              </Button>
+            </form>
+
+            {/* Bottom text link */}
+            <div className="text-center text-sm">
+              <span className="text-gray-400">Already have an account? </span>
+              <Link to="/login" className="text-red-500 font-bold hover:underline">
+                Login
+              </Link>
             </div>
           </div>
+        </motion.div>
+      </div>
 
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full"
-            size="lg"
-          >
-            {loading ? <LoadingSpinner size="sm" /> : 'Create Account'}
-          </Button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <p className="text-gray-600">
-            Already have an account?{' '}
-            <Link to="/login" className="text-red-600 hover:text-red-700 font-medium">
-              Sign in here
-            </Link>
-          </p>
-        </div>
-      </motion.div>
+      {/* Footer */}
+      <footer className="py-4 text-center text-xs text-gray-400 border-t border-gray-100">
+        Demo credentials: john.donor@email.com / password
+      </footer>
     </div>
   );
 };

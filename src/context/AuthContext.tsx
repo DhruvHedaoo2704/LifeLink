@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, AuthContextType, RegisterData } from '../types';
-import { mockUsers } from '../data/mockData';
+import React, { createContext, useContext, useEffect } from 'react';
+import { AuthContextType, RegisterData, User } from '../types';
+import { useAuthStore } from '../store/authStore';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -13,72 +13,39 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const { user, login: storeLogin, register: storeRegister, logout: storeLogout, updateProfile, fetchProfile, isAuthenticated } = useAuthStore();
 
+  // On mount, load profile if session is active
   useEffect(() => {
-    const storedUser = localStorage.getItem('lifelink_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    if (isAuthenticated) {
+      fetchProfile().catch(console.error);
     }
-  }, []);
+  }, [isAuthenticated, fetchProfile]);
 
   const login = async (email: string, password: string, userType: 'donor' | 'recipient') => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const foundUser = mockUsers.find(u => u.email === email);
-    if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('lifelink_user', JSON.stringify(foundUser));
-    } else {
-      throw new Error('Invalid credentials');
-    }
+    // Both email and mobile are handled by the single identifier login endpoint
+    await storeLogin(email, password);
+  };
+
+  const googleLogin = async (token: string) => {
+    const { googleLogin: storeGoogleLogin } = useAuthStore.getState();
+    await storeGoogleLogin(token);
   };
 
   const register = async (userData: RegisterData) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const newUser: User = {
-      id: Date.now().toString(),
-      email: userData.email,
-      name: userData.name,
-      bloodType: userData.bloodType,
-      phone: userData.phone,
-      location: userData.location,
-      isAvailable: true,
-      isDonor: userData.userType === 'donor',
-      isRecipient: userData.userType === 'recipient',
-      donationCount: 0,
-      points: 0,
-      badges: [],
-      joinDate: new Date(),
-      privacy: {
-        shareLocation: true,
-        shareContact: true,
-        receiveAlerts: true,
-      },
-    };
-
-    setUser(newUser);
-    localStorage.setItem('lifelink_user', JSON.stringify(newUser));
+    await storeRegister(userData);
   };
 
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem('lifelink_user');
+    storeLogout().catch(console.error);
   };
 
   const updateUser = (userData: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...userData };
-      setUser(updatedUser);
-      localStorage.setItem('lifelink_user', JSON.stringify(updatedUser));
-    }
+    updateProfile(userData).catch(console.error);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, login, googleLogin, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

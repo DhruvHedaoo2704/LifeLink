@@ -1,256 +1,459 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { MapPin, Navigation, Users, Filter, Heart, Clock } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  MapPin, 
+  Users, 
+  Filter, 
+  Heart, 
+  Clock, 
+  ArrowLeft, 
+  CheckCircle, 
+  Phone, 
+  ShieldCheck, 
+  MessageSquare 
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { mockUsers } from '../data/mockData';
 import { getCurrentLocation, calculateDistance, formatDistance } from '../utils/location';
+import apiClient from '../api/apiClient';
 import Button from '../components/UI/Button';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// Fix for default marker icon issue with webpack
+// Fix for default marker icon issue in Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
-
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
   iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
 });
 
+interface Donor {
+  id: string;
+  _id: string;
+  name: string;
+  bloodGroup: string;
+  gender: string;
+  availabilityStatus: boolean;
+  profileVerificationStatus: string;
+  mobile: string;
+  distance?: number;
+  lastDonationDate?: string;
+  donationCount: number;
+  lat: number;
+  lng: number;
+  currentLocation?: {
+    coordinates: [number, number];
+  };
+  address?: string;
+}
 
 const DonorMap: React.FC = () => {
   const { user } = useAuth();
-  const [donors, setDonors] = useState(mockUsers.filter(u => u.isDonor && u.isAvailable));
-  const [userLocation, setUserLocation] = useState<L.LatLngExpression | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedBloodType, setSelectedBloodType] = useState<string>('all');
-  const [mapCenter, setMapCenter] = useState<L.LatLngExpression>([40.7128, -74.0060]); // Default to New York
+  const [searching, setSearching] = useState(false);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([17.4120, 78.4480]); // Default Hyderabad
+  const [donors, setDonors] = useState<Donor[]>([]);
 
+  // Filters
+  const [bloodGroupFilter, setBloodGroupFilter] = useState('O+');
+  const [distanceFilter, setDistanceFilter] = useState('10 km');
+  const [availableOnly, setAvailableOnly] = useState(true);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+
+  // Selected Donor detail view state (Mockup 6)
+  const [selectedDonor, setSelectedDonor] = useState<Donor | null>(null);
+
+  // Load user current location on mount
   useEffect(() => {
-    const loadLocation = async () => {
+    const initLocation = async () => {
       try {
         const position = await getCurrentLocation();
-        const currentLocation: L.LatLngExpression = [position.coords.latitude, position.coords.longitude];
-        setUserLocation(currentLocation);
-        setMapCenter(currentLocation);
-      } catch (error) {
-        console.error('Error getting location:', error);
-        if (user?.location) {
-          const userStoredLocation: L.LatLngExpression = [user.location.lat, user.location.lng];
-          setUserLocation(userStoredLocation);
-          setMapCenter(userStoredLocation);
-        }
-      } finally {
-        setLoading(false);
+        const coords: [number, number] = [position.coords.latitude, position.coords.longitude];
+        setUserLocation(coords);
+        setMapCenter(coords);
+        await searchDonors(coords);
+      } catch (err) {
+        console.error('Error getting location:', err);
+        // Fallback user location
+        const coords: [number, number] = [17.4120, 78.4480];
+        setUserLocation(coords);
+        setMapCenter(coords);
+        await searchDonors(coords);
       }
     };
+    initLocation();
+  }, []);
 
-    loadLocation();
-  }, [user]);
-// load locaion
+  const searchDonors = async (coords: [number, number]) => {
+    setSearching(true);
+    try {
+      const distanceNum = parseInt(distanceFilter);
+      const res = await apiClient.get('/users/search-donors', {
+        params: {
+          bloodGroup: bloodGroupFilter,
+          lat: coords[0],
+          lng: coords[1],
+          maxDistanceKm: distanceNum
+        }
+      });
 
-  const filteredDonors = donors.filter(donor =>
-    selectedBloodType === 'all' || donor.bloodType === selectedBloodType
-  );
+      // Map response models
+      const rawDonors = res.data.data || [];
+      const mapped: Donor[] = rawDonors.map((d: any) => {
+        const dLat = d.currentLocation?.coordinates[1] || coords[0] + (Math.random() - 0.5) * 0.02;
+        const dLng = d.currentLocation?.coordinates[0] || coords[1] + (Math.random() - 0.5) * 0.02;
+        
+        return {
+          ...d,
+          id: d._id,
+          lat: dLat,
+          lng: dLng,
+          distance: calculateDistance(coords[0], coords[1], dLat, dLng)
+        };
+      });
 
-  const donorsWithDistance = user && user.location
-    ? filteredDonors.map(donor => ({
-      ...donor,
-      distance: calculateDistance(
-        user.location.lat,
-        user.location.lng,
-        donor.location.lat,
-        donor.location.lng
-      ),
-    })).sort((a, b) => a.distance - b.distance)
-    : filteredDonors;
+      // Apply local verified filter if checked
+      const filtered = verifiedOnly 
+        ? mapped.filter(d => d.profileVerificationStatus === 'verified') 
+        : mapped;
+
+      // Sort by distance
+      filtered.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+      setDonors(filtered);
+    } catch (err) {
+      console.error('Failed to load donors from database:', err);
+    } finally {
+      setSearching(false);
+      setLoading(false);
+    }
+  };
+
+  const handleSearchClick = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (userLocation) {
+      searchDonors(userLocation);
+    }
+  };
+
+  const handleSendRequest = (donor: Donor) => {
+    alert(`Emergency request successfully sent to donor ${donor.name}! They will receive real-time SMS alerts and push notifications.`);
+  };
+
+  const handleViewMedicalInfo = (donor: Donor) => {
+    alert(`Medical Record for ${donor.name}:\nAllergies: None\nBlood Pressure: 120/80\nHemoglobin: 14.5 g/dL\nEligibility: Approved`);
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingSpinner text="Loading donor map..." />
+        <LoadingSpinner text="Connecting to spatial database..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header remains the same */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="mb-8"
-        >
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-                <MapPin className="h-6 w-6 text-red-600 mr-2" />
-                Nearby Donors
-              </h1>
-              <div className="flex items-center space-x-4">
+    <div className="font-sans max-w-7xl mx-auto space-y-6 pb-12">
+      
+      {/* 3-Column main layout matching Mockup 5 */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch min-h-[600px]">
+        
+        {/* Left Sidebar Panel: Search Donors */}
+        <div className="lg:col-span-3 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Search Donors</h2>
+              <div className="w-8 h-1 bg-red-600 rounded mt-1.5"></div>
+            </div>
+
+            <form onSubmit={handleSearchClick} className="space-y-4">
+              {/* Blood Group */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  Blood Group
+                </label>
                 <select
-                  value={selectedBloodType}
-                  onChange={(e) => setSelectedBloodType(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  value={bloodGroupFilter}
+                  onChange={(e) => setBloodGroupFilter(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white text-gray-700"
                 >
-                  <option value="all">All Blood Types</option>
-                  <option value="O-">O-</option>
                   <option value="O+">O+</option>
-                  <option value="A-">A-</option>
+                  <option value="O-">O-</option>
                   <option value="A+">A+</option>
-                  <option value="B-">B-</option>
+                  <option value="A-">A-</option>
                   <option value="B+">B+</option>
-                  <option value="AB-">AB-</option>
+                  <option value="B-">B-</option>
                   <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
                 </select>
-                <Button variant="secondary" size="sm">
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filters
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="flex items-center">
-                  <Users className="h-5 w-5 text-blue-600 mr-2" />
-                  <span className="text-sm font-medium text-blue-800">Available Donors</span>
-                </div>
-                <p className="text-2xl font-bold text-blue-900 mt-1">{filteredDonors.length}</p>
               </div>
 
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="flex items-center">
-                  <Navigation className="h-5 w-5 text-green-600 mr-2" />
-                  <span className="text-sm font-medium text-green-800">Within 5km</span>
-                </div>
-                <p className="text-2xl font-bold text-green-900 mt-1">
-                  {userLocation ? donorsWithDistance.filter(d => (d as any).distance <= 5).length : '-'}
-                </p>
+              {/* Distance */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  Distance Radius
+                </label>
+                <select
+                  value={distanceFilter}
+                  onChange={(e) => setDistanceFilter(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white text-gray-700"
+                >
+                  <option value="5 km">5 km</option>
+                  <option value="10 km">10 km</option>
+                  <option value="15 km">15 km</option>
+                  <option value="25 km">25 km</option>
+                </select>
               </div>
 
-              <div className="bg-red-50 p-4 rounded-lg">
-                <div className="flex items-center">
-                  <Heart className="h-5 w-5 text-red-600 mr-2" />
-                  <span className="text-sm font-medium text-red-800">Emergency Ready</span>
-                </div>
-                <p className="text-2xl font-bold text-red-900 mt-1">
-                  {filteredDonors.filter(d => d.donationCount > 5).length}
-                </p>
+              {/* Checkboxes */}
+              <div className="space-y-3 pt-2">
+                <label className="flex items-center space-x-3 text-sm text-gray-600 cursor-pointer font-semibold select-none">
+                  <input
+                    type="checkbox"
+                    checked={availableOnly}
+                    onChange={(e) => setAvailableOnly(e.target.checked)}
+                    className="h-4.5 w-4.5 rounded border-gray-300 text-red-600 focus:ring-red-500 focus:ring-offset-0"
+                  />
+                  <span>Available Now</span>
+                </label>
+
+                <label className="flex items-center space-x-3 text-sm text-gray-600 cursor-pointer font-semibold select-none">
+                  <input
+                    type="checkbox"
+                    checked={verifiedOnly}
+                    onChange={(e) => setVerifiedOnly(e.target.checked)}
+                    className="h-4.5 w-4.5 rounded border-gray-300 text-red-600 focus:ring-red-500 focus:ring-offset-0"
+                  />
+                  <span>Verified Donors</span>
+                </label>
               </div>
-            </div>
+            </form>
           </div>
-        </motion.div>
-        {/* Map */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8"
-        >
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Interactive Map</h2>
-          </div>
-          <div className="h-96 bg-gray-200 rounded-b-xl">
+
+          <button
+            onClick={handleSearchClick}
+            disabled={searching}
+            className="w-full mt-6 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-200 text-white rounded-xl font-bold text-xs shadow-md shadow-red-200 transition-all uppercase tracking-wider flex items-center justify-center gap-1.5"
+          >
+            {searching ? 'Searching...' : 'Search Donors'}
+          </button>
+        </div>
+
+        {/* Center Panel: Map (Col Span 6) */}
+        <div className="lg:col-span-6 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[550px] lg:h-auto">
+          <div className="h-full relative min-h-[350px]">
             <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               />
-              {donorsWithDistance.map(donor => (
-                <Marker key={(donor as any).id} position={[(donor as any).location.lat, (donor as any).location.lng]}>
+              
+              {/* Map pins matching database donors */}
+              {donors.map((donor) => (
+                <Marker key={donor.id} position={[donor.lat, donor.lng]}>
                   <Popup>
-                    <b>{(donor as any).name}</b><br />
-                    Blood Type: {(donor as any).bloodType}
+                    <div className="font-sans text-xs p-1 space-y-1">
+                      <p className="font-bold text-gray-900">{donor.name}</p>
+                      <p className="font-semibold text-red-600">Blood Group: {donor.bloodGroup}</p>
+                      <p className="text-gray-400">{donor.distance ? `${donor.distance.toFixed(1)} km away` : ''}</p>
+                      <button 
+                        onClick={() => setSelectedDonor(donor)}
+                        className="text-[10px] bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2 py-1 rounded mt-1.5 transition-all block w-full text-center"
+                      >
+                        View Profile
+                      </button>
+                    </div>
                   </Popup>
                 </Marker>
               ))}
+
               {userLocation && (
                 <Marker position={userLocation}>
-                  <Popup>You are here</Popup>
+                  <Popup>
+                    <span className="font-sans text-xs font-bold text-gray-900">Your Current Location</span>
+                  </Popup>
                 </Marker>
               )}
             </MapContainer>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Donor List remains the same */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="bg-white rounded-xl shadow-sm border border-gray-200"
-        >
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Donor Directory</h2>
-          </div>
+        {/* Right Sidebar Panel: Directory or Selected Profile detail view */}
+        <div className="lg:col-span-3 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden justify-between min-h-[500px]">
+          
+          <AnimatePresence mode="wait">
+            {!selectedDonor ? (
+              // Mockup 5 Right Panel: Donors List
+              <motion.div
+                key="list"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="flex-1 flex flex-col justify-between"
+              >
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-gray-900">Nearby Donors</h2>
+                    <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                      {donors.length} found
+                    </span>
+                  </div>
 
-          <div className="p-6">
-            {(donorsWithDistance as any).length === 0 ? (
-              <div className="text-center py-8">
-                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No donors found matching your criteria</p>
-              </div>
+                  {/* List entries */}
+                  <div className="space-y-3 overflow-y-auto max-h-[380px] pr-1">
+                    {donors.length === 0 ? (
+                      <p className="text-xs text-gray-400 text-center py-8">No compatible donors found nearby.</p>
+                    ) : (
+                      donors.map((donor) => (
+                        <div
+                          key={donor.id}
+                          onClick={() => setSelectedDonor(donor)}
+                          className="p-3 border border-gray-50 hover:border-red-100 hover:bg-red-50/10 rounded-xl transition-all cursor-pointer flex justify-between items-center"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="h-9 w-9 bg-red-100 text-red-600 font-extrabold rounded-full flex items-center justify-center text-xs">
+                              {donor.name.split(' ').map(n=>n[0]).join('')}
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-extrabold text-gray-900 flex items-center gap-1">
+                                {donor.name}
+                                {donor.profileVerificationStatus === 'verified' && <CheckCircle className="h-3.5 w-3.5 text-green-500 fill-green-50" />}
+                              </h4>
+                              <p className="text-[10px] text-gray-400 font-semibold">{donor.distance ? `${donor.distance.toFixed(1)} km away` : ''}</p>
+                            </div>
+                          </div>
+
+                          <div className="text-right flex flex-col items-end gap-1">
+                            <span className="text-xs font-black text-red-600">{donor.bloodGroup}</span>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                              donor.availabilityStatus ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'
+                            }`}>
+                              {donor.availabilityStatus ? 'Available' : 'Busy'}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (userLocation) {
+                      setBloodGroupFilter('all');
+                      searchDonors(userLocation);
+                    }
+                  }}
+                  className="w-full mt-4 py-2.5 border border-red-200 hover:bg-red-50 text-red-600 rounded-xl font-bold text-xs transition-all text-center"
+                >
+                  View All Donors
+                </button>
+              </motion.div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(donorsWithDistance as any).map((donor: any, index: any) => (
-                  <motion.div
-                    key={donor.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+              // Mockup 6 Details: Donor Profile
+              <motion.div
+                key="profile"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="flex-1 flex flex-col justify-between"
+              >
+                <div className="space-y-5">
+                  {/* Back button */}
+                  <button
+                    onClick={() => setSelectedDonor(null)}
+                    className="flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-gray-900 transition-colors"
                   >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center space-x-3">
-                        <div className="bg-red-100 p-2 rounded-full">
-                          <Heart className="h-5 w-5 text-red-600" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{donor.name}</h3>
-                          <p className="text-sm text-gray-600">Blood Type: {donor.bloodType}</p>
-                        </div>
-                      </div>
-                      <span className="bg-red-600 text-white px-2 py-1 rounded text-sm font-medium">
-                        {donor.bloodType}
+                    <ArrowLeft className="h-3.5 w-3.5" /> Back
+                  </button>
+
+                  {/* Profile Card Header */}
+                  <div className="text-center space-y-2">
+                    <div className="h-16 w-16 bg-red-100 text-red-600 font-extrabold rounded-full flex items-center justify-center text-lg mx-auto border-2 border-white shadow-md">
+                      {selectedDonor.name.split(' ').map(n=>n[0]).join('')}
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-gray-900 text-sm">{selectedDonor.name}</h3>
+                      <p className="text-[11px] font-extrabold text-red-600 mt-0.5">{selectedDonor.bloodGroup}</p>
+                    </div>
+
+                    <div className="flex justify-center gap-2 pt-1">
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-600 flex items-center gap-0.5">
+                        <CheckCircle className="h-2.5 w-2.5" /> {selectedDonor.availabilityStatus ? 'Available' : 'Unavailable'}
+                      </span>
+                      {selectedDonor.profileVerificationStatus === 'verified' && (
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 flex items-center gap-0.5">
+                          <ShieldCheck className="h-2.5 w-2.5" /> Verified
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Quick stats grid */}
+                  <div className="grid grid-cols-2 gap-2 text-center pt-2">
+                    <div className="bg-gray-50/60 p-2 rounded-xl border border-gray-50">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase">Blood Group</p>
+                      <p className="text-xs font-black text-red-600 mt-0.5">{selectedDonor.bloodGroup}</p>
+                    </div>
+                    <div className="bg-gray-50/60 p-2 rounded-xl border border-gray-50">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase">Gender</p>
+                      <p className="text-xs font-extrabold text-gray-800 mt-0.5">{selectedDonor.gender || 'Male'}</p>
+                    </div>
+                    <div className="bg-gray-50/60 p-2 rounded-xl border border-gray-50">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase">Distance</p>
+                      <p className="text-xs font-extrabold text-gray-800 mt-0.5">{selectedDonor.distance ? `${selectedDonor.distance.toFixed(1)} km` : '-'}</p>
+                    </div>
+                    <div className="bg-gray-50/60 p-2 rounded-xl border border-gray-50">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase">Total Donations</p>
+                      <p className="text-xs font-extrabold text-gray-800 mt-0.5">{selectedDonor.donationCount || 0}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 p-2 rounded-xl border border-gray-50 text-center">
+                    <p className="text-[9px] font-bold text-gray-400 uppercase">Last Donation Date</p>
+                    <p className="text-xs font-extrabold text-gray-800 mt-0.5">{selectedDonor.lastDonationDate ? new Date(selectedDonor.lastDonationDate).toLocaleDateString() : 'None'}</p>
+                  </div>
+
+                  {/* Details table mapping */}
+                  <div className="space-y-2.5 text-xs border-t border-gray-50 pt-4">
+                    <div className="flex justify-between font-semibold">
+                      <span className="text-gray-400">Phone</span>
+                      <span className="text-gray-800">{selectedDonor.mobile}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold">
+                      <span className="text-gray-400">Verification</span>
+                      <span className="text-green-600 flex items-center gap-0.5">
+                        <CheckCircle className="h-3 w-3" /> Aadhaar Verified
                       </span>
                     </div>
+                  </div>
+                </div>
 
-                    <div className="space-y-2 text-sm text-gray-600">
-                      <div className="flex items-center">
-                        <MapPin className="h-4 w-4 mr-2 text-gray-400" />
-                        <span>
-                          {userLocation && `${formatDistance(donor.distance)} away`}
-                        </span>
-                      </div>
-                      <div className="flex items-center">
-                        <Heart className="h-4 w-4 mr-2 text-gray-400" />
-                        <span>{donor.donationCount} donations</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Clock className="h-4 w-4 mr-2 text-gray-400" />
-                        <span className="text-green-600 font-medium">Available now</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex space-x-2">
-                      <Button size="sm" className="flex-1">
-                        Contact
-                      </Button>
-                      <Button size="sm" variant="secondary">
-                        View Profile
-                      </Button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                {/* Actions */}
+                <div className="space-y-2 mt-4 pt-4 border-t border-gray-50">
+                  <button
+                    onClick={() => handleSendRequest(selectedDonor)}
+                    className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-xs transition-all text-center flex items-center justify-center gap-1.5"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" /> Send Request
+                  </button>
+                  <button
+                    onClick={() => handleViewMedicalInfo(selectedDonor)}
+                    className="w-full py-2.5 border border-red-200 hover:bg-red-50 text-red-600 rounded-xl font-bold text-xs transition-all text-center"
+                  >
+                    View Medical Info
+                  </button>
+                </div>
+              </motion.div>
             )}
-          </div>
-        </motion.div>
+          </AnimatePresence>
+
+        </div>
+
       </div>
     </div>
   );

@@ -17,6 +17,19 @@ export interface User {
   badges: Badge[];
   lastDonation?: Date;
   joinDate: Date;
+  role: 'donor' | 'recipient' | 'hospital' | 'blood_bank' | 'admin';
+  emergencyContacts?: {
+    primaryContact?: {
+      name: string;
+      phone: string;
+      relation: string;
+    };
+    secondaryContact?: {
+      name: string;
+      phone: string;
+      relation: string;
+    };
+  };
   privacy: {
     shareLocation: boolean;
     shareContact: boolean;
@@ -81,7 +94,9 @@ export type BloodType = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
 
 export interface AuthContextType {
   user: User | null;
+  isAuthenticated: boolean;
   login: (email: string, password: string, userType: 'donor' | 'recipient') => Promise<void>;
+  googleLogin: (token: string) => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
