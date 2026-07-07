@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: lifelink-backend
+    env: docker # Tells Render to build and run the Dockerfile in the root
+    plan: free
+    region: oregon
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000 # Render defaults to port 10000 for Docker services
+      - key: MONGO_URI
+        sync: false # User will input this on Render dashboard
+      - key: FRONTEND_URL
+        sync: false # User will input this on Render dashboard
+      - key: CORS_ORIGIN
+        sync: false # User will input this on Render dashboard
+      - key: JWT_SECRET
+        generateValue: true # Render automatically generates a secure 256-bit random secret!
+      - key: JWT_REFRESH_SECRET
+        generateValue: true # Render automatically generates a secure 256-bit random secret!
+      - key: ENCRYPTION_KEY
+        sync: false # User will input their 32-byte hex key
+      - key: EMAIL_PROVIDER
+        value: log # Default to console logs. Change to smtp when SMTP parameters are input.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        value: '"LifeLink Platform" <no-reply@lifelink.org>'
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE
+        sync: false
